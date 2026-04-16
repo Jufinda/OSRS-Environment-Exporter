@@ -57,31 +57,51 @@ class TextureLoader(cacheLibrary: CacheLibrary, paramsManager: ParamsManager) {
     private fun loadMultiFileTexture(id: Int, b: ByteArray): TextureDefinition {
         val def = TextureDefinition()
         val inputStream = ByteBuffer.wrap(b)
-        def.field1777 = inputStream.readUnsignedShort()
-        def.field1778 = inputStream.get().toInt() != 0
         def.id = id
-        val count: Int = inputStream.readUnsignedByte()
-        val files = IntArray(count)
-        for (i in 0 until count) files[i] = inputStream.readUnsignedShort()
-        def.fileIds = files
-        if (count > 1) {
-            def.field1780 = IntArray(count - 1)
-            for (var3 in 0 until count - 1) {
-                def.field1780[var3] = inputStream.readUnsignedByte()
+
+        try {
+            def.field1777 = inputStream.readUnsignedShort()
+            def.field1778 = inputStream.get().toInt() != 0
+
+            if (!inputStream.hasRemaining()) return def
+            val count: Int = inputStream.readUnsignedByte()
+
+            // Safety check: Prevent massive loops if the format shifted
+            if (count * 2 > inputStream.remaining() || count < 0) return def
+
+            val files = IntArray(count)
+            for (i in 0 until count) {
+                files[i] = inputStream.readUnsignedShort()
             }
-        }
-        if (count > 1) {
-            def.field1781 = IntArray(count - 1)
-            for (var3 in 0 until count - 1) {
-                def.field1781[var3] = inputStream.readUnsignedByte()
+            def.fileIds = files
+
+            if (count > 1 && inputStream.remaining() >= count - 1) {
+                def.field1780 = IntArray(count - 1)
+                for (var3 in 0 until count - 1) {
+                    def.field1780[var3] = inputStream.readUnsignedByte()
+                }
             }
+            if (count > 1 && inputStream.remaining() >= count - 1) {
+                def.field1781 = IntArray(count - 1)
+                for (var3 in 0 until count - 1) {
+                    def.field1781[var3] = inputStream.readUnsignedByte()
+                }
+            }
+
+            if (inputStream.remaining() >= count * 4) {
+                def.field1786 = IntArray(count)
+                for (var3 in 0 until count) {
+                    def.field1786[var3] = inputStream.int
+                }
+            }
+
+            if (inputStream.hasRemaining()) def.field1783 = inputStream.readUnsignedByte()
+            if (inputStream.hasRemaining()) def.field1782 = inputStream.readUnsignedByte()
+
+        } catch (e: Exception) {
+            println("Warning: Texture ID $id format mismatch, skipping remaining bytes.")
         }
-        def.field1786 = IntArray(count)
-        for (var3 in 0 until count) {
-            def.field1786[var3] = inputStream.int
-        }
-        def.field1783 = inputStream.readUnsignedByte()
-        def.field1782 = inputStream.readUnsignedByte()
+
         return def
     }
 
@@ -89,12 +109,20 @@ class TextureLoader(cacheLibrary: CacheLibrary, paramsManager: ParamsManager) {
         val def = TextureDefinition()
         val inputStream = ByteBuffer.wrap(b)
         def.id = id
-        def.fileIds = IntArray(1) { inputStream.readUnsignedShort() }
-        def.field1777 = inputStream.readUnsignedShort()
-        def.field1778 = inputStream.get() != 0.toByte()
-        def.field1786 = IntArray(1) { 0 }
-        def.field1783 = inputStream.readUnsignedByte()
-        def.field1782 = inputStream.readUnsignedByte()
+
+        try {
+            if (inputStream.remaining() >= 2) {
+                def.fileIds = IntArray(1) { inputStream.readUnsignedShort() }
+            }
+            if (inputStream.remaining() >= 2) def.field1777 = inputStream.readUnsignedShort()
+            if (inputStream.hasRemaining()) def.field1778 = inputStream.get() != 0.toByte()
+            def.field1786 = IntArray(1) { 0 }
+            if (inputStream.hasRemaining()) def.field1783 = inputStream.readUnsignedByte()
+            if (inputStream.hasRemaining()) def.field1782 = inputStream.readUnsignedByte()
+        } catch (e: Exception) {
+            println("Warning: Texture ID $id format mismatch, skipping remaining bytes.")
+        }
+
         return def
     }
 

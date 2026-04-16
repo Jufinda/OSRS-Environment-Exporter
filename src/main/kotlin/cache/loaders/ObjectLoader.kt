@@ -86,6 +86,28 @@ class ObjectLoader(private val cacheLibrary: CacheLibrary) : ThreadsafeLazyLoade
                 }
                 def.modelIds = objectModels
             }
+        } else if (opcode == 6) {
+            val length = inputStream.readUnsignedByte()
+            if (length > 0) {
+                val objectTypes = IntArray(length)
+                val objectModels = IntArray(length)
+                for (index in 0 until length) {
+                    objectModels[index] = inputStream.int
+                    objectTypes[index] = inputStream.readUnsignedByte()
+                }
+                def.modelTypes = objectTypes
+                def.modelIds = objectModels
+            }
+        } else if (opcode == 7) {
+            val length = inputStream.readUnsignedByte()
+            if (length > 0) {
+                def.modelTypes = null
+                val objectModels = IntArray(length)
+                for (index in 0 until length) {
+                    objectModels[index] = inputStream.int
+                }
+                def.modelIds = objectModels
+            }
         } else if (opcode == 14) {
             def.sizeX = inputStream.readUnsignedByte()
         } else if (opcode == 15) {
@@ -212,15 +234,14 @@ class ObjectLoader(private val cacheLibrary: CacheLibrary) : ThreadsafeLazyLoade
             def.anIntArray2084 = anIntArray2084
         } else if (opcode == 81) {
             inputStream.readUnsignedByte() * 256
-            // 'removed' at some point (should be in rev 219 or later than that, definitely before rev 225)
-            // the reason why trees look weird is because of the 'dummy' value that is written for them after this change
-            // def.contouredGround = inputStream.readUnsignedByte() * 256
         } else if (opcode == 90) {
             // fix location anim after loc change
         } else if (opcode == 82) {
             def.mapAreaId = inputStream.readUnsignedShort()
         } else if (opcode == 89) {
-            logger.debug("Processed ignored opcode 89 for $def")
+            logger.debug("Processed ignored opcode 89 for \$def")
+        } else if (opcode == 91) {
+            inputStream.readUnsignedByte()
         } else if (opcode == 92) {
             var transformVarbit: Int = inputStream.readUnsignedShort()
             if (transformVarbit == 0xFFFF) {
@@ -246,8 +267,17 @@ class ObjectLoader(private val cacheLibrary: CacheLibrary) : ThreadsafeLazyLoade
             }
             transforms[length + 1] = transform
             def.transforms = transforms
+        } else if (opcode == 93) {
+            inputStream.readUnsignedByte()
+            inputStream.readUnsignedShort()
+            inputStream.readUnsignedByte()
+            inputStream.readUnsignedShort()
+        } else if (opcode == 94) {
+            logger.debug("Processed ignored opcode 94 for \$def")
         } else if (opcode == 95) {
-            logger.debug("Processed ignored opcode 95 for $def")
+            logger.debug("Processed ignored opcode 95 for \$def")
+            inputStream.readUnsignedByte()
+        } else if (opcode == 96) {
             inputStream.readUnsignedByte()
         } else if (opcode == 249) {
             val length: Int = inputStream.readUnsignedByte()
@@ -264,7 +294,7 @@ class ObjectLoader(private val cacheLibrary: CacheLibrary) : ThreadsafeLazyLoade
             }
             def.params = params
         } else {
-            logger.warn("Unrecognized opcode: $opcode")
+            logger.warn("Unrecognized opcode: \$opcode")
         }
     }
 

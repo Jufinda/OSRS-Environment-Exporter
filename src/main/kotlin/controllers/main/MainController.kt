@@ -330,7 +330,7 @@ class MainController constructor(
     private fun checkForUpdates() {
         val rawCurrentVersion = PackageMetadata.VERSION
         if (rawCurrentVersion.isBlank()) {
-            logger.warn("No version info available; cannot auto-update.")
+            // Silently return to avoid warning when running in dev mode
             return
         }
 
@@ -339,42 +339,45 @@ class MainController constructor(
 
         // see if it's been an hour since the last check
         if ((now - lastChecked) < 3600) {
-            logger.info("Checked for updates within the past hour. Skipping check...")
             return
         }
 
-        val releaseInfo = getGitHubReleaseInfo()
+        val releaseInfo = getGitHubReleaseInfo() ?: return
 
-        // map the response to an array of sorted GitHubRelease
-        val objectMapper = ObjectMapper()
-        val releases = objectMapper.readValue<Array<GitHubRelease>>(
-            releaseInfo,
-            objectMapper.typeFactory.constructArrayType(GitHubRelease::class.java)
-        ).sortedWith { a, b ->
-            val aVersion = a.tagName.split(".").map { it.toInt() }
-            val bVersion = b.tagName.split(".").map { it.toInt() }
-            compareVersions(aVersion, bVersion)
-        }
+        try {
+            // map the response to an array of sorted GitHubRelease
+            val objectMapper = ObjectMapper()
+            val releases = objectMapper.readValue<Array<GitHubRelease>>(
+                releaseInfo,
+                objectMapper.typeFactory.constructArrayType(GitHubRelease::class.java)
+            ).sortedWith { a, b ->
+                val aVersion = a.tagName.split(".").map { it.toInt() }
+                val bVersion = b.tagName.split(".").map { it.toInt() }
+                compareVersions(aVersion, bVersion)
+            }
 
-        // determine if there is a newer version available
-        val currVersion = rawCurrentVersion.split(".").map { it.toInt() }
-        val newerVersionUrl = newerReleaseExists(currVersion, releases)
+            // determine if there is a newer version available
+            val currVersion = rawCurrentVersion.split(".").map { it.toInt() }
+            val newerVersionUrl = newerReleaseExists(currVersion, releases)
 
-        if (newerVersionUrl != null) {
-            // add UI elements to menu bar
-            jMenuBar.add(Box.createHorizontalGlue())
-            jMenuBar.add(
-                JLinkLabel(
-                    newerVersionUrl,
-                    "Update available! Click here to download."
+            if (newerVersionUrl != null) {
+                // add UI elements to menu bar
+                jMenuBar.add(Box.createHorizontalGlue())
+                jMenuBar.add(
+                    JLinkLabel(
+                        newerVersionUrl,
+                        "Update available! Click here to download."
+                    )
                 )
-            )
-            jMenuBar.add(Box.createHorizontalStrut(4))
-            pack()
-        }
+                jMenuBar.add(Box.createHorizontalStrut(4))
+                pack()
+            }
 
-        configOptions.lastCheckedForUpdates.value.set(now)
-        configOptions.save()
+            configOptions.lastCheckedForUpdates.value.set(now)
+            configOptions.save()
+        } catch (e: Exception) {
+            logger.info("Could not process update information.")
+        }
     }
 
     private fun getGitHubReleaseInfo(): String? {
@@ -401,7 +404,7 @@ class MainController constructor(
             }
             return buffer.toString()
         } catch (e: IOException) {
-            e.printStackTrace()
+            // Silently fail if network is down
             return null
         }
     }

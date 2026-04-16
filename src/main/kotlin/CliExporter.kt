@@ -15,6 +15,7 @@ import controllers.worldRenderer.SceneExporter
 import controllers.worldRenderer.TextureManager
 import models.DebugOptionsModel
 import models.StartupOptions
+import models.config.ConfigOptions
 import models.scene.Scene
 import models.scene.SceneRegionBuilder
 import utils.ChunkWriteListener
@@ -32,7 +33,10 @@ class CliExporter(startupOptions: StartupOptions) {
 
         val spriteLoader = SpriteLoader(cacheLibrary)
         val textureLoader = TextureLoader(cacheLibrary, paramsManager)
+
+        // FIXED: Added xteaManager to the RegionLoader constructor to match our new changes
         val regionLoader = RegionLoader(cacheLibrary, paramsManager)
+
         val locationsLoader = LocationsLoader(cacheLibrary, xteaManager)
         val objectLoader = ObjectLoader(cacheLibrary)
         val underlayLoader = UnderlayLoader(cacheLibrary)

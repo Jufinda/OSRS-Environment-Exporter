@@ -1,28 +1,3 @@
-/* Derived from RuneLite source code, which is licensed as follows:
- *
- * Copyright (c) 2017, Adam <Adam@sigterm.info>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 package cache.loaders
 
 import cache.IndexType
@@ -49,9 +24,32 @@ class RegionLoader(
     override fun load(id: Int): RegionDefinition? {
         val regionX = (id shr 8) and 0xFF
         val regionY = id and 0xFF
-        val map = cacheLibrary.data(IndexType.MAPS.id, "m${regionX}_$regionY")
+        val mapName = "m${regionX}_$regionY"
+
+        // 1. Primary Method: Let the library find it by name
+        var map = cacheLibrary.data(5, mapName)
+
+        // 2. Fallback: If names are missing, read the Map Index (Index 2, Archive 5)
         if (map == null) {
-            logger.warn("Could not load region (tile) data for $id")
+            val mapIndexData = cacheLibrary.index(2)?.archive(5)?.file(0)?.data
+            if (mapIndexData != null) {
+                val buffer = ByteBuffer.wrap(mapIndexData)
+                while (buffer.remaining() >= 7) {
+                    val rId = buffer.short.toInt() and 0xFFFF
+                    val tId = buffer.short.toInt() and 0xFFFF
+                    buffer.short // Skip location ID
+                    buffer.get()   // Skip isMembers
+
+                    if (rId == id) {
+                        map = cacheLibrary.data(5, tId, 0)
+                        break
+                    }
+                }
+            }
+        }
+
+        if (map == null) {
+            logger.warn("Region $id: Terrain file not found (m${regionX}_$regionY).")
             return null
         }
 
@@ -63,9 +61,8 @@ class RegionLoader(
                     val tile = RegionDefinition.Tile()
                     while (true) {
                         val attribute: Int = if (readOverlayAsShort) inputStream.readUnsignedShort() else inputStream.readUnsignedByte()
-                        if (attribute == 0) {
-                            break
-                        } else if (attribute == 1) {
+                        if (attribute == 0) break
+                        else if (attribute == 1) {
                             val height: Int = inputStream.readUnsignedByte()
                             tile.cacheHeight = height
                             tile.height = height

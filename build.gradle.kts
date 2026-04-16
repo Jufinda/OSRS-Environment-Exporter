@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "link.cdy"
-version = "2.4.2"
+version = "2.6.0"
 
 repositories {
     mavenCentral {
@@ -35,7 +35,7 @@ dependencies {
     implementation("org.pushing-pixels:radiance-theming:5.0.0")
 
     // lwjgl and dependencies thereof
-    implementation(platform("org.lwjgl:lwjgl-bom:3.3.1"))
+    implementation(platform("org.lwjgl:lwjgl-bom:3.3.3"))
 
     implementation("org.lwjgl", "lwjgl")
     implementation("org.lwjgl", "lwjgl-jawt")
