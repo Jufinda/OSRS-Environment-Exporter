@@ -1,6 +1,5 @@
 package cache.loaders
 
-import cache.IndexType
 import cache.ParamType
 import cache.ParamsManager
 import cache.definitions.RegionDefinition
@@ -22,34 +21,25 @@ class RegionLoader(
     private val readOverlayAsShort = (paramsManager.getParam(ParamType.REVISION)?.toInt() ?: 0) >= OVERLAY_SHORT_BREAKING_CHANGE_REV_NUMBER
 
     override fun load(id: Int): RegionDefinition? {
+        val mapsIndex = cacheLibrary.index(5)
         val regionX = (id shr 8) and 0xFF
         val regionY = id and 0xFF
         val mapName = "m${regionX}_$regionY"
+        val targetHash = calculateOsrsHash(mapName)
 
-        // 1. Primary Method: Let the library find it by name
+        // 1. Try fetching by Name (Standard caches)
         var map = cacheLibrary.data(5, mapName)
 
-        // 2. Fallback: If names are missing, read the Map Index (Index 2, Archive 5)
+        // 2. Try fetching by DJB2 Hash (OpenRS2 Master Caches)
         if (map == null) {
-            val mapIndexData = cacheLibrary.index(2)?.archive(5)?.file(0)?.data
-            if (mapIndexData != null) {
-                val buffer = ByteBuffer.wrap(mapIndexData)
-                while (buffer.remaining() >= 7) {
-                    val rId = buffer.short.toInt() and 0xFFFF
-                    val tId = buffer.short.toInt() and 0xFFFF
-                    buffer.short // Skip location ID
-                    buffer.get()   // Skip isMembers
-
-                    if (rId == id) {
-                        map = cacheLibrary.data(5, tId, 0)
-                        break
-                    }
-                }
+            val archiveByHash = mapsIndex.archive(targetHash)
+            if (archiveByHash != null) {
+                map = cacheLibrary.data(5, archiveByHash.id, 0)
             }
         }
 
         if (map == null) {
-            logger.warn("Region $id: Terrain file not found (m${regionX}_$regionY).")
+            logger.warn("Region $id: Terrain file not found. This cache may be incomplete.")
             return null
         }
 
@@ -86,6 +76,14 @@ class RegionLoader(
         val regionDefinition = RegionDefinition(id, tiles)
         regionDefinition.calculateTerrain()
         return regionDefinition
+    }
+
+    private fun calculateOsrsHash(name: String): Int {
+        var hash = 0
+        for (element in name.lowercase()) {
+            hash = (hash shl 5) - hash + element.code
+        }
+        return hash
     }
 
     fun findRegionForWorldCoordinates(x: Int, y: Int): RegionDefinition? {

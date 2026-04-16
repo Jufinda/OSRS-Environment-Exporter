@@ -26,11 +26,17 @@ class LocationsLoader(
         // 1. Primary Method
         var landscape = library.data(5, mapName, xteaKeys)
 
-        // 2. Fallback: Map Index Lookup
+        // 2. Fallback: Map Index Lookup with REV 237 FIX
         if (landscape == null) {
             val mapIndexData = library.index(2)?.archive(5)?.file(0)?.data
             if (mapIndexData != null) {
                 val buffer = ByteBuffer.wrap(mapIndexData)
+
+                // REV 237 FIX: Skip 4-byte header if size isn't a multiple of 7
+                if (mapIndexData.size % 7 != 0) {
+                    buffer.position(4)
+                }
+
                 while (buffer.remaining() >= 7) {
                     val rId = buffer.short.toInt() and 0xFFFF
                     buffer.short // Skip terrain ID
