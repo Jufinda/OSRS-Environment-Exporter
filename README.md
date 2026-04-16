@@ -18,6 +18,16 @@ If you're on macOS or Linux, open a terminal window, change directory to where y
 
 [TheSkulled](https://www.youtube.com/channel/UC3NPPMYWrCH4oCFeKRf9Ltw) made a lovely [tutorial video](https://www.youtube.com/watch?v=NhqLDY9QH7k) for the exporter. Give it a watch! 👀
 
+## Controls
+
+Navigating the 3D viewport is similar to most standard 3D modeling software:
+
+* **W, A, S, D** - Move the camera forward, left, backward, and right.
+* **Right-Click + Drag** - Rotate/look around with the camera.
+* **Scroll Wheel** - Zoom the camera in and out.
+* **Shift (Hold)** - Move the camera faster while using WASD.
+* **UI Panel** - Use the menus to select regions, adjust export settings, and output to `.gltf`/`.obj`.
+
 ## Troubleshooting
 
 If the application does not run, make sure you have JDK 11 or newer installed.
