@@ -27,19 +27,29 @@ class RegionLoader(
         val mapName = "m${regionX}_$regionY"
         val targetHash = calculateOsrsHash(mapName)
 
-        // 1. Try fetching by Name (Standard caches)
-        var map = cacheLibrary.data(5, mapName)
+        var map: ByteArray? = null
 
-        // 2. Try fetching by DJB2 Hash (OpenRS2 Master Caches)
-        if (map == null) {
+        // 1. Try fetching by Name (Pre-Stripped Caches)
+        map = cacheLibrary.data(5, mapName)
+
+        // 2. Try fetching by DJB2 Hash (Standard OpenRS2 Caches)
+        if (map == null && mapsIndex != null) {
             val archiveByHash = mapsIndex.archive(targetHash)
             if (archiveByHash != null) {
                 map = cacheLibrary.data(5, archiveByHash.id, 0)
             }
         }
 
+        // 3. REV 237 NATIVE SUPPORT: Archive ID == Region ID (Terrain is File 0)
+        if (map == null && mapsIndex != null) {
+            // Ignore the hardcoded dummy region 25287 (98 << 8 | 199)
+            if (id != 25287 && mapsIndex.archive(id) != null) {
+                map = cacheLibrary.data(5, id, 0)
+            }
+        }
+
         if (map == null) {
-            logger.warn("Region $id: Terrain file not found. This cache may be incomplete.")
+            logger.warn("Region $id: Terrain file not found.")
             return null
         }
 

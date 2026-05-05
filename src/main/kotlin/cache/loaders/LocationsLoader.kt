@@ -20,39 +20,34 @@ class LocationsLoader(
         val x = (id shr 8) and 0xFF
         val y = id and 0xFF
         val mapName = "l${x}_$y"
+        val targetHash = calculateOsrsHash(mapName)
 
         val xteaKeys = xtea.getKeys(id) ?: IntArray(4)
+        val mapsIndex = library.index(5)
 
-        // 1. Primary Method
-        var landscape = library.data(5, mapName, xteaKeys)
+        var landscape: ByteArray? = null
 
-        // 2. Fallback: Map Index Lookup with REV 237 FIX
-        if (landscape == null) {
-            val mapIndexData = library.index(2)?.archive(5)?.file(0)?.data
-            if (mapIndexData != null) {
-                val buffer = ByteBuffer.wrap(mapIndexData)
+        // 1. Primary Method (Pre-Stripped Caches)
+        landscape = library.data(5, mapName, xteaKeys)
 
-                // REV 237 FIX: Skip 4-byte header if size isn't a multiple of 7
-                if (mapIndexData.size % 7 != 0) {
-                    buffer.position(4)
-                }
+        // 2. DJB2 Hash Lookup (OpenRS2 Master Caches - Pre Rev 237)
+        if (landscape == null && mapsIndex != null) {
+            val archiveByHash = mapsIndex.archive(targetHash)
+            if (archiveByHash != null) {
+                landscape = library.data(5, archiveByHash.id, 0, xteaKeys)
+            }
+        }
 
-                while (buffer.remaining() >= 7) {
-                    val rId = buffer.short.toInt() and 0xFFFF
-                    buffer.short // Skip terrain ID
-                    val lId = buffer.short.toInt() and 0xFFFF
-                    buffer.get()   // Skip isMembers
-
-                    if (rId == id) {
-                        landscape = library.data(5, lId, 0, xteaKeys)
-                        break
-                    }
-                }
+        // 3. REV 237 NATIVE SUPPORT: Archive ID == Region ID (Locations is File 1)
+        if (landscape == null && mapsIndex != null) {
+            if (id != 25287 && mapsIndex.archive(id) != null) {
+                // Jagex removed XTEA encryption entirely in Rev 237!
+                landscape = library.data(5, id, 1)
             }
         }
 
         if (landscape == null) {
-            logger.warn("Locations $id: File not found (l${x}_$y).")
+            logger.warn("Locations $id: File not found.")
             return null
         }
 
@@ -78,5 +73,13 @@ class LocationsLoader(
             idOffset = buffer.readUnsignedSmartShortExtended()
         }
         return locationsDefinition
+    }
+
+    private fun calculateOsrsHash(name: String): Int {
+        var hash = 0
+        for (element in name.lowercase()) {
+            hash = (hash shl 5) - hash + element.code
+        }
+        return hash
     }
 }
