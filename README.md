@@ -90,3 +90,5 @@ Based on [@tpetrychyn](https://github.com/tpetrychyn)'s [OSRS Map Editor](https:
 Using changes from [@partyvaper](https://github.com/partyvaper)'s [fork](https://github.com/partyvaper/osrs-map-editor).
 
 Forked from [@ConnorDY](https://github.com/ConnorDY)'s [fork](https://github.com/ConnorDY/OSRS-Environment-Exporter).
+
+Thanks to [@DennisDev](https://github.com/dennisdev) from [OSRS.World/RS Map Viewer](https://github.com/dennisdev/rs-map-viewer) for helping update to support Rev.237.
